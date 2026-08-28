@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/total_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:lineSpacingExtra="6dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="20dp"
+        android:text="@string/grant_hint"
+        android:textSize="13sp"
+        android:textColor="#666666" />
+
+    <Button
+        android:id="@+id/grant_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="授权通知监听" />
+
+    <Button
+        android:id="@+id/refresh_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="刷新" />
+
+    <Button
+        android:id="@+id/test_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="模拟通知（人民币1.00）" />
+
+    <Button
+        android:id="@+id/month_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="模拟跨月清零（调试）" />
+
+    <Button
+        android:id="@+id/battery_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="允许后台运行（省电白名单）" />
+
+    <Button
+        android:id="@+id/keepalive_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="开启常驻保活（前台服务）" />
+
+    <Button
+        android:id="@+id/autostart_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="查看自启动开启指引" />
+
+    <Button
+        android:id="@+id/rules_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="规则设置（排除关键词）" />
+
+    <TextView
+        android:id="@+id/items_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textSize="13sp"
+        android:lineSpacingExtra="4dp"
+        android:text="（暂无明细）" />
+</LinearLayout>

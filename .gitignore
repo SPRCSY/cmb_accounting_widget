@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+
+# 本地机器配置（SDK 路径各不相同，不能进仓库）
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 签名文件（私钥绝不入库）
+*.keystore
+*.jks
+*.p12
