@@ -17,9 +17,12 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore/release.jks")
-            storePassword = "csy123456"
+            // 密码从 gradle property 读取，不进仓库、不写死：
+            //   本地：放 ~/.gradle/gradle.properties
+            //   云端：GitHub Secret 通过 ORG_GRADLE_PROJECT_* 环境变量注入
+            storePassword = (project.findProperty("CMB_STORE_PASSWORD") as String?) ?: ""
             keyAlias = "cmb"
-            keyPassword = "csy123456"
+            keyPassword = (project.findProperty("CMB_KEY_PASSWORD") as String?) ?: ""
         }
     }
 

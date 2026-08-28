@@ -12,7 +12,11 @@
 
 产物：`app/build/outputs/apk/release/app-release.apk`
 
-该 APK 用仓库内 `app/keystore/release.jks` 自签名，**本地与 Codespaces 编译出的签名一致**，可直接覆盖安装（无需卸载旧版、不依赖 debug keystore）。
+该 APK 用仓库内 `app/keystore/release.jks` 自签名，**本地与 CI 编译出的签名一致**，可直接覆盖安装。
+
+**签名密码不写死在代码里**，通过 gradle property 注入：
+- 本地：把下面两行写到 `~/.gradle/gradle.properties`（`CMB_STORE_PASSWORD` / `CMB_KEY_PASSWORD`）
+- GitHub Actions：在仓库 Settings → Secrets → Actions 里配同名 Secret，CI 通过 `ORG_GRADLE_PROJECT_*` 环境变量读取
 
 ### 安装到手机
 
