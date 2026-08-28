@@ -48,6 +48,8 @@ public class SpendWidgetProvider extends AppWidgetProvider {
     static RemoteViews buildViews(Context context) {
         long cents = SpendStore.getCurrentMonthCents(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
+        // 显式设置标签文字，避免 OPPO launcher 复用 RemoteViews 时标签被错刷成金额
+        views.setTextViewText(R.id.widget_label, context.getString(R.string.widget_label));
         views.setTextViewText(R.id.widget_amount, formatYuan(cents));
         views.setOnClickPendingIntent(R.id.widget_root,
                 PendingIntent.getActivity(context, 0,

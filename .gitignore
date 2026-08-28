@@ -14,7 +14,8 @@ local.properties
 .DS_Store
 Thumbs.db
 
-# 签名文件（私钥绝不入库）
+# 签名文件
+# release.jks 是本项目的个人签名，特意入库（本地与 Codespaces 共享同一签名，保证覆盖安装不冲突）
+# 其它 keystore/p12 一律排除，防止误提交其它私钥
 *.keystore
-*.jks
 *.p12

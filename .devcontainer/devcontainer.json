@@ -1,0 +1,20 @@
+{
+  "name": "CmbSpendWidget Android",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "remoteEnv": {
+    "ANDROID_SDK_ROOT": "/usr/local/lib/android/sdk",
+    "ANDROID_HOME": "/usr/local/lib/android/sdk"
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-gradle",
+        "redhat.java"
+      ],
+      "settings": {
+        "java.import.gradle.enabled": true
+      }
+    }
+  }
+}
