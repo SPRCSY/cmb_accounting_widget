@@ -4,24 +4,41 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.service.notification.NotificationListenerService;
 import android.text.TextUtils;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-/** 引导页：显示本月累计消费、一键跳系统「通知使用权」授权；debug 用模拟通知与跨月清零。 */
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
+/** 主页面：本月累计 + 明细表格（时间 | 金额 | 详细）+ 合计。
+ *  常用操作留在本页，调试与保活类操作移到 AdvancedActivity。 */
 public class MainActivity extends Activity {
 
     private static final int REQ_POST_NOTIFICATIONS = 1001;
+
     private TextView totalView;
-    private TextView itemsView;
+    private TextView subView;
+    private LinearLayout headerRow;
+    private LinearLayout bodyCol;
+    private LinearLayout totalRow;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,44 +46,37 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         totalView = findViewById(R.id.total_text);
-        itemsView = findViewById(R.id.items_text);
-        Button grantBtn = findViewById(R.id.grant_btn);
-        Button refreshBtn = findViewById(R.id.refresh_btn);
-        Button testBtn = findViewById(R.id.test_btn);
-        Button monthBtn = findViewById(R.id.month_btn);
-        Button batteryBtn = findViewById(R.id.battery_btn);
+        subView = findViewById(R.id.sub_text);
+        headerRow = findViewById(R.id.table_header);
+        bodyCol = findViewById(R.id.table_body);
+        totalRow = findViewById(R.id.table_total);
 
-        grantBtn.setOnClickListener(v -> {
-            if (isListenerEnabled()) {
-                // 已授权但可能未绑定：主动请求系统重新绑定监听服务
-                NotificationListenerService.requestRebind(
-                        new ComponentName(this, CmbNotificationListener.class));
-                Toast.makeText(this, "已授权，正在重新连接监听…", Toast.LENGTH_SHORT).show();
-            } else {
-                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
-            }
+        findViewById(R.id.grant_btn).setOnClickListener(v -> onGrantClicked());
+        findViewById(R.id.refresh_btn).setOnClickListener(v -> render());
+        findViewById(R.id.rules_btn).setOnClickListener(v -> showRulesDialog());
+        findViewById(R.id.advanced_btn).setOnClickListener(v ->
+                startActivity(new Intent(this, AdvancedActivity.class)));
+
+        Button pendingBtn = findViewById(R.id.pending_btn);
+        pendingBtn.setOnClickListener(v ->
+                startActivity(new Intent(this, PendingIncomeActivity.class)));
+
+        applyWindowInsets();
+    }
+
+    /** targetSdk 35 在 Android 15 上强制 edge-to-edge，标题会顶到状态栏里。
+     *  给根布局加系统栏内边距，保证内容避开状态栏/导航栏。 */
+    private void applyWindowInsets() {
+        final View root = findViewById(R.id.root);
+        if (root == null) return;
+        final int baseL = root.getPaddingLeft(), baseT = root.getPaddingTop();
+        final int baseR = root.getPaddingRight(), baseB = root.getPaddingBottom();
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars());
+            v.setPadding(baseL + bars.left, baseT + bars.top, baseR + bars.right, baseB + bars.bottom);
+            return insets;
         });
-        refreshBtn.setOnClickListener(v -> render());
-        testBtn.setOnClickListener(v -> sendTestNotification());
-        monthBtn.setOnClickListener(v -> {
-            SpendStore.resetForDebug(this);
-            render();
-            Toast.makeText(this, "已模拟跨月清零（含去重记录）", Toast.LENGTH_SHORT).show();
-        });
-        batteryBtn.setOnClickListener(v -> openBatteryOptimization());
-
-        Button keepBtn = findViewById(R.id.keepalive_btn);
-        keepBtn.setOnClickListener(v -> {
-            KeepAliveService.ensureRunning(this);
-            render();
-            Toast.makeText(this, "常驻保活已开启（下拉通知栏可见）", Toast.LENGTH_SHORT).show();
-        });
-
-        Button autoBtn = findViewById(R.id.autostart_btn);
-        autoBtn.setOnClickListener(v -> openAutoStart());
-
-        Button rulesBtn = findViewById(R.id.rules_btn);
-        rulesBtn.setOnClickListener(v -> showRulesDialog());
     }
 
     @Override
@@ -99,15 +109,188 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void onGrantClicked() {
+        if (isListenerEnabled()) {
+            NotificationListenerService.requestRebind(
+                    new ComponentName(this, CmbNotificationListener.class));
+            Toast.makeText(this, "已授权，正在重新连接监听…", Toast.LENGTH_SHORT).show();
+        } else {
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+        }
+    }
+
     private void render() {
         long cents = SpendStore.getCurrentMonthCents(this);
         String status = isListenerEnabled() ? "已授权" : "未授权";
         String keep = isKeepAliveRunning() ? "运行中" : "未开启";
         int ruleCount = Rules.getExcludeWords(this).size();
-        totalView.setText("本月消费 " + SpendWidgetProvider.formatYuan(cents)
-                + "\n通知监听：" + status + "　保活：" + keep
-                + (ruleCount > 0 ? "\n排除规则：" + ruleCount + " 个关键词" : ""));
-        renderItems();
+        int pending = SpendStore.getPendingIncomeCount(this);
+        totalView.setText("本月消费 " + SpendWidgetProvider.formatYuan(cents));
+
+        StringBuilder sub = new StringBuilder();
+        sub.append("通知监听：").append(status).append("　保活：").append(keep);
+        if (ruleCount > 0) sub.append("\n排除规则：").append(ruleCount).append(" 个关键词");
+        if (pending > 0) sub.append("\n待决收入：").append(pending).append(" 笔待你定性");
+        subView.setText(sub.toString());
+
+        renderTable();
+    }
+
+    /** 渲染明细表格：表头 + 逐行 + 合计页脚；时间/金额列宽按内容智能配置。 */
+    private void renderTable() {
+        if (headerRow == null || bodyCol == null || totalRow == null) return;
+
+        List<SpendStore.Item> items = SpendStore.getItems(this);
+        SimpleDateFormat dayFmt = new SimpleDateFormat("MM-dd", Locale.getDefault());
+        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        // 第一遍：准备每行要显示的文本，并测最宽的「时间」「金额」两列
+        String[] timeTexts = new String[items.size()];
+        String[] amtTexts = new String[items.size()];
+        String[] detailTexts = new String[items.size()];
+        int[] amountColors = new int[items.size()];
+        Paint measure = new Paint();
+        measure.setTextSize(spToPx(12));
+        measure.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        float maxTime = measure.measureText("时间");
+        float maxAmt = measure.measureText("金额");
+
+        for (int i = 0; i < items.size(); i++) {
+            SpendStore.Item it = items.get(i);
+            String time = dayFmt.format(new Date(it.timeMs)) + "\n" + timeFmt.format(new Date(it.timeMs));
+            String amt;
+            long signed;
+            if (it.isSpend()) { signed = it.cents; amt = "+" + SpendWidgetProvider.formatYuan(it.cents); }
+            else if (it.isRefund()) { signed = -it.cents; amt = "-" + SpendWidgetProvider.formatYuan(it.cents); }
+            else { signed = 0; amt = "收入 " + SpendWidgetProvider.formatYuan(it.cents); }
+
+            String detail = buildDetail(it);
+            timeTexts[i] = time;
+            amtTexts[i] = amt;
+            detailTexts[i] = detail;
+            amountColors[i] = it.isSpend() ? 0xFF222222
+                    : it.isRefund() ? 0xFF1B7F3B : 0xFF1F5FBF;
+
+            // 时间列是两行文本，取较宽的一行
+            float w1 = Math.max(measure.measureText(dayFmt.format(new Date(it.timeMs))),
+                    measure.measureText(timeFmt.format(new Date(it.timeMs))));
+            maxTime = Math.max(maxTime, w1);
+            maxAmt = Math.max(maxAmt, measure.measureText(amt));
+        }
+
+        int timeW = Math.round(maxTime) + dpToPx(14);
+        int amtW = Math.round(maxAmt) + dpToPx(14);
+        int cellGap = dpToPx(8);
+
+        // 表头
+        headerRow.removeAllViews();
+        headerRow.addView(makeCell("时间", timeW, cellGap, true, Gravity.START, 0xFF333333));
+        headerRow.addView(makeCell("金额", amtW, cellGap, true, Gravity.END, 0xFF333333));
+        headerRow.addView(makeFlexCell("详细", cellGap, true, Gravity.START, 0xFF333333));
+
+        // 明细行
+        bodyCol.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(this);
+        if (items.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("（暂无明细）");
+            empty.setTextSize(12);
+            empty.setPadding(cellGap, dpToPx(10), cellGap, dpToPx(10));
+            empty.setTextColor(0xFF888888);
+            bodyCol.addView(empty);
+        }
+        for (int i = 0; i < items.size(); i++) {
+            View row = inflater.inflate(R.layout.table_row, bodyCol, false);
+            TextView cTime = row.findViewById(R.id.cell_time);
+            TextView cAmt = row.findViewById(R.id.cell_amount);
+            TextView cDetail = row.findViewById(R.id.cell_detail);
+
+            cTime.setLayoutParams(fixedParams(timeW, cellGap));
+            cTime.setText(timeTexts[i]);
+            cAmt.setLayoutParams(fixedParams(amtW, cellGap));
+            cAmt.setText(amtTexts[i]);
+            cAmt.setTextColor(amountColors[i]);
+            cDetail.setText(detailTexts[i]);
+
+            // 隔行底色，便于横向对账
+            int bg = (i % 2 == 0) ? 0x00FFFFFF : 0x14000000;
+            row.setBackgroundColor(bg);
+            bodyCol.addView(row);
+        }
+
+        // 合计页脚：与顶部大数同源，保证「支出 − 退款 − 收入抵扣 = 净额」能对上
+        SpendStore.Summary sum = SpendStore.getSummary(this);
+        long net = Math.max(0, sum.netCents());
+        totalRow.removeAllViews();
+        totalRow.addView(makeCell("合计", timeW, cellGap, true, Gravity.START, 0xFF222222));
+        totalRow.addView(makeCell(SpendWidgetProvider.formatYuan(net), amtW, cellGap, true,
+                Gravity.END, 0xFF222222));
+        StringBuilder sumDetail = new StringBuilder();
+        sumDetail.append("支出 ").append(SpendWidgetProvider.formatYuan(sum.spendCents))
+                .append(" − 退款 ").append(SpendWidgetProvider.formatYuan(sum.refundCents));
+        if (sum.deductCents > 0) {
+            sumDetail.append(" − 收入抵扣 ").append(SpendWidgetProvider.formatYuan(sum.deductCents));
+        }
+        sumDetail.append(" = 净 ").append(SpendWidgetProvider.formatYuan(net));
+        totalRow.addView(makeFlexCell(sumDetail.toString(), cellGap, true, Gravity.START, 0xFF222222));
+    }
+
+    /** 详情：商户名 + 原文关键内容（收入标出待决/已定性）。 */
+    private String buildDetail(SpendStore.Item it) {
+        StringBuilder sb = new StringBuilder();
+        if (it.merchant != null && !it.merchant.isEmpty()) {
+            sb.append(it.merchant);
+        } else {
+            sb.append(it.isIncome() ? "（未识别商户）" : "—");
+        }
+        if (it.isIncome()) sb.append("　[收入]");
+        String d = it.detail == null ? "" : it.detail.trim();
+        if (!d.isEmpty()) {
+            sb.append("\n").append(d);
+        }
+        return sb.toString();
+    }
+
+    private TextView makeCell(String text, int width, int gap, boolean bold, int gravity, int color) {
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextSize(12);
+        tv.setTypeface(null, bold ? Typeface.BOLD : Typeface.NORMAL);
+        tv.setGravity(gravity);
+        tv.setTextColor(color);
+        tv.setLayoutParams(fixedParams(width, gap));
+        return tv;
+    }
+
+    private TextView makeFlexCell(String text, int gap, boolean bold, int gravity, int color) {
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextSize(12);
+        tv.setTypeface(null, bold ? Typeface.BOLD : Typeface.NORMAL);
+        tv.setGravity(gravity);
+        tv.setTextColor(color);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        lp.setMarginStart(gap);
+        tv.setLayoutParams(lp);
+        return tv;
+    }
+
+    private LinearLayout.LayoutParams fixedParams(int width, int gap) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                width, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMarginStart(gap);
+        return lp;
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp,
+                getResources().getDisplayMetrics()));
+    }
+
+    private float spToPx(int sp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp,
+                getResources().getDisplayMetrics());
     }
 
     /** 检测常驻保活前台服务是否在运行。
@@ -115,7 +298,6 @@ public class MainActivity extends Activity {
      *  标志未置位但服务确实被 onResume 拉起过时，兜底按运行中处理。 */
     private boolean isKeepAliveRunning() {
         if (KeepAliveService.isRunning()) return true;
-        // 兜底：查系统运行服务（前台服务通常可见）
         try {
             android.app.ActivityManager am = getSystemService(android.app.ActivityManager.class);
             if (am != null) {
@@ -128,53 +310,12 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    /** 展示当月最近的明细（对账用：能发现监听器掉线漏记的笔） */
-    private void renderItems() {
-        if (itemsView == null) return;
-        java.util.List<long[]> items = SpendStore.getItems(this);
-        StringBuilder sb = new StringBuilder();
-        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault());
-        int n = Math.min(items.size(), 8);
-        for (int i = 0; i < n; i++) {
-            long[] it = items.get(i);
-            String merchant = SpendStore.getMerchantAt(this, i);
-            String amt = SpendWidgetProvider.formatYuan(Math.abs(it[1]));
-            sb.append(fmt.format(new java.util.Date(it[0])))
-              .append("  ").append(it[1] < 0 ? "退款 -" + amt : amt)
-              .append("  ").append(merchant).append("\n");
-        }
-        if (sb.length() == 0) sb.append("（暂无明细）");
-        itemsView.setText(sb.toString());
-    }
-
-    /** 跳到电池优化设置页，引导用户关闭对「当月消费」的省电限制（能显著提高监听存活率） */
-    private void openBatteryOptimization() {
-        try {
-            Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-            i.setData(android.net.Uri.parse("package:" + getPackageName()));
-            startActivity(i);
-        } catch (Exception e) {
-            try {
-                startActivity(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS));
-            } catch (Exception ignored) {
-                Toast.makeText(this, "未找到电池优化设置，请在系统设置里手动关闭「当月消费」的省电限制", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    /** 自启动指引：ColorOS 自启动页有厂商权限保护无法直接跳转，只弹文字引导用户手动开启。 */
-    private void openAutoStart() {
-        Toast.makeText(this,
-                "手动开启自启动：\n系统设置 → 应用 → 应用管理 → 自启动 → 找到「当月消费」→ 打开开关",
-                Toast.LENGTH_LONG).show();
-    }
-
     /** 规则设置对话框：增删「排除关键词」。命中任一排除词的动账不计入消费。 */
     private void showRulesDialog() {
         final java.util.Set<String> words = new java.util.LinkedHashSet<>(Rules.getExcludeWords(this));
         final android.widget.EditText input = new android.widget.EditText(this);
         input.setHint("输入要排除的关键词，如：转账 / 还款 / 随用随充");
-        input.setText(android.text.TextUtils.join("、", words));
+        input.setText(TextUtils.join("、", words));
 
         new android.app.AlertDialog.Builder(this)
                 .setTitle("排除关键词")
@@ -204,16 +345,5 @@ public class MainActivity extends Activity {
             if (s.equalsIgnoreCase(cn.flattenToString())) return true;
         }
         return false;
-    }
-
-    /** debug 用：直接累加 1 元并刷新小组件，验证存储/累计/显示链路
-     *  （监听器只处理 cmb.pb 真实通知，测试通知无法伪造包名，故这里绕过监听直接累加） */
-    private void sendTestNotification() {
-        SpendStore.addCents(this, 100L);
-        // 同步记一条明细（模拟真实动账记录）
-        SpendStore.addItem(this, System.currentTimeMillis(), 100L, "模拟-测试消费");
-        SpendWidgetProvider.refresh(this);
-        render();
-        Toast.makeText(this, "已模拟收到1元消费（累加至本月）", Toast.LENGTH_SHORT).show();
     }
 }

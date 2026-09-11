@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:id="@+id/adv_root"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="高级 / 保活"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/adv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="12dp"
+            android:textSize="13sp"
+            android:textColor="#666666"
+            android:lineSpacingExtra="4dp" />
+
+        <Button
+            android:id="@+id/keepalive_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="开启常驻保活（前台服务）" />
+
+        <Button
+            android:id="@+id/battery_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="允许后台运行（省电白名单）" />
+
+        <Button
+            android:id="@+id/autostart_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="查看自启动开启指引" />
+
+        <Button
+            android:id="@+id/export_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="导出明细 CSV（备份/查账）" />
+
+        <Button
+            android:id="@+id/storage_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="授予「所有文件访问权限」" />
+
+        <Button
+            android:id="@+id/restore_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="从自建目录恢复（重装后自动读）" />
+
+        <Button
+            android:id="@+id/import_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="从备份导入（手动选文件）" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:background="#DDDDDD" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="调试"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#333333" />
+
+        <Button
+            android:id="@+id/test_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="模拟一笔消费（¥1.00）" />
+
+        <Button
+            android:id="@+id/test_income_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="模拟一笔收入（待决）" />
+
+        <Button
+            android:id="@+id/month_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="清空本月数据（调试）" />
+
+        <Button
+            android:id="@+id/back_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="返回" />
+    </LinearLayout>
+</ScrollView>

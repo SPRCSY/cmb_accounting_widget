@@ -1,81 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="16dp">
 
+    <!-- 顶部：本月累计 -->
     <TextView
         android:id="@+id/total_text"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:lineSpacingExtra="6dp" />
+        android:lineSpacingExtra="4dp" />
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="20dp"
-        android:text="@string/grant_hint"
-        android:textSize="13sp"
-        android:textColor="#666666" />
-
-    <Button
-        android:id="@+id/grant_btn"
+        android:id="@+id/sub_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="授权通知监听" />
+        android:layout_marginTop="2dp"
+        android:textSize="12sp"
+        android:textColor="#666666"
+        android:lineSpacingExtra="3dp" />
 
-    <Button
-        android:id="@+id/refresh_btn"
+    <!-- 主操作：只保留最常用的 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="刷新" />
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/test_btn"
+        <Button
+            android:id="@+id/grant_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="授权监听" />
+
+        <Button
+            android:id="@+id/refresh_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="刷新" />
+
+        <Button
+            android:id="@+id/rules_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="排除规则" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="模拟通知（人民币1.00）" />
+        android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/month_btn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="模拟跨月清零（调试）" />
+        <Button
+            android:id="@+id/pending_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="待决收入" />
 
-    <Button
-        android:id="@+id/battery_btn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="允许后台运行（省电白名单）" />
-
-    <Button
-        android:id="@+id/keepalive_btn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="开启常驻保活（前台服务）" />
-
-    <Button
-        android:id="@+id/autostart_btn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="查看自启动开启指引" />
-
-    <Button
-        android:id="@+id/rules_btn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="规则设置（排除关键词）" />
+        <Button
+            android:id="@+id/advanced_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="高级 / 保活" />
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/items_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="14dp"
+        android:text="本月明细"
         android:textSize="13sp"
-        android:lineSpacingExtra="4dp"
-        android:text="（暂无明细）" />
+        android:textStyle="bold"
+        android:textColor="#333333" />
+
+    <!-- 表头（固定在滚动区之上） -->
+    <LinearLayout
+        android:id="@+id/table_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:background="#E8E8E8"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp" />
+
+    <!-- 明细主体：自带滚动条，逐行渲染 -->
+    <ScrollView
+        android:id="@+id/table_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="1dp"
+        android:scrollbars="vertical"
+        android:fillViewport="false">
+
+        <LinearLayout
+            android:id="@+id/table_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <!-- 合计（固定页脚，始终可见） -->
+    <LinearLayout
+        android:id="@+id/table_total"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:background="#DDDDDD"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp" />
 </LinearLayout>

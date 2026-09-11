@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 待决收入卡片：显示收入信息 + 性质选择 + 抵扣额输入 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="14dp"
+    android:padding="12dp"
+    android:background="#F4F4F4">
+
+    <TextView
+        android:id="@+id/income_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#222222" />
+
+    <TextView
+        android:id="@+id/income_raw"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="11sp"
+        android:textColor="#777777"
+        android:lineSpacingExtra="2dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="性质"
+        android:textSize="12sp"
+        android:textColor="#444444" />
+
+    <Spinner
+        android:id="@+id/income_nature"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="从本月消费中抵扣的金额（元，可改部分金额做 AA）"
+        android:textSize="12sp"
+        android:textColor="#444444" />
+
+    <EditText
+        android:id="@+id/income_deduct"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="numberDecimal"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/income_save"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="保存这笔" />
+</LinearLayout>

@@ -5,7 +5,8 @@ import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
 
-/** 监听招行 App（cmb.pb）的动账通知，解析出消费金额累加到本月总额，随后刷新桌面小组件。 */
+/** 监听招行 App（cmb.pb）的动账通知，解析出消费金额累加到本月总额，随后刷新桌面小组件。
+ *  收入类动账（退款之外的转入/到账等）不直接计入，而是登记到「待决收入」由用户定性。 */
 public class CmbNotificationListener extends NotificationListenerService {
 
     private static final String CMB_PACKAGE = "cmb.pb";
@@ -35,7 +36,7 @@ public class CmbNotificationListener extends NotificationListenerService {
         }
     }
 
-    /** 处理一条通知：只认 cmb.pb，解析消费金额并累加 */
+    /** 处理一条通知：只认 cmb.pb，解析类型后分流（支出累加 / 退款扣减 / 收入进待决表） */
     private void handleNotification(StatusBarNotification sbn) {
         if (sbn == null || !CMB_PACKAGE.equals(sbn.getPackageName())) return;
         try {
@@ -46,21 +47,35 @@ public class CmbNotificationListener extends NotificationListenerService {
             CharSequence titleCs = n.extras.getCharSequence(Notification.EXTRA_TITLE);
             String title = titleCs == null ? "" : titleCs.toString();
             String text = textCs == null ? "" : textCs.toString();
+            String full = title + " " + text;
 
-            // 带符号金额：消费为正、退款为负、无关为 0；应用用户自定义排除关键词
-            long cents = CmbNotificationParser.parseSignedCents(
-                    title + " " + text, Rules.getExcludeWords(this));
-            if (cents == 0) return;
+            CmbNotificationParser.Result r = CmbNotificationParser.parse(
+                    full, Rules.getExcludeWords(this));
+            if (!r.isValid()) return;
 
             // 去重：按通知 id（pkg|id），同一笔动账的更新/重发不会重复累加；集合按月保存，跨月清空
-            if (SpendStore.isDuplicate(this, sbn.getPackageName() + "|" + sbn.getId())) return;
+            String key = sbn.getPackageName() + "|" + sbn.getId();
+            if (SpendStore.isDuplicate(this, key)) return;
 
-            SpendStore.addCents(this, cents);
-            // 记录明细：日期（毫秒）+ 带符号金额（分，退款为负）+ 商户，供对账发现漏记
-            SpendStore.addItem(this, System.currentTimeMillis(), cents,
-                    CmbNotificationParser.extractMerchant(text));
+            String merchant = CmbNotificationParser.extractMerchant(text);
+            if (CmbNotificationParser.Result.TYPE_SPEND.equals(r.type)) {
+                SpendStore.addCents(this, r.cents);
+                // 取现没有商户名，用「现金取款」作为来源标签，便于对账时区分
+                String label = merchant.isEmpty() ? r.label() : merchant;
+                SpendStore.addItem(this, System.currentTimeMillis(), r.cents, label,
+                        SpendStore.KIND_SPEND, text);
+            } else if (CmbNotificationParser.Result.TYPE_REFUND.equals(r.type)) {
+                SpendStore.addCents(this, -r.cents);
+                SpendStore.addItem(this, System.currentTimeMillis(), r.cents, merchant,
+                        SpendStore.KIND_REFUND, text);
+            } else if (CmbNotificationParser.Result.TYPE_INCOME.equals(r.type)) {
+                // 收入不直接抵扣消费，登记进待决台账，等用户在「待决收入」里定性
+                SpendStore.addItem(this, System.currentTimeMillis(), r.cents, merchant,
+                        SpendStore.KIND_INCOME, text);
+                SpendStore.addIncome(this, key, System.currentTimeMillis(), r.cents, merchant, text);
+            }
             SpendWidgetProvider.refresh(this);
-            Log.d(TAG, (cents < 0 ? "退款扣减 " : "计入 ") + cents + " 分，本月累计 "
+            Log.d(TAG, "处理 " + r.type + " " + r.cents + " 分，本月累计 "
                     + SpendStore.getCurrentMonthCents(this));
         } catch (Exception e) {
             Log.w(TAG, "处理通知异常", e);

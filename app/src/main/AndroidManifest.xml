@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Android 13+ 发通知的运行时权限（用于 App 内测试通知与频道） -->
@@ -9,6 +10,14 @@
     <!-- 前台服务（常驻保活）所需权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 备份到公共目录：Android 9 及以下需要写外部存储；10+ 走 MediaStore 无需权限 -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <!-- 所有文件访问权限：用于在内部存储根目录自建「当月消费」目录，做到重装后自动恢复 -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:label="@string/app_name"
@@ -39,7 +48,7 @@
                 android:resource="@xml/appwidget_info" />
         </receiver>
 
-        <!-- 引导页：显示当前累计 + 跳系统通知使用权授权 -->
+        <!-- 主页面：本月累计 + 明细表格 + 合计 -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -48,6 +57,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 高级 / 保活 + 调试：低频设置与调试手段，从主页面挪出 -->
+        <activity
+            android:name=".AdvancedActivity"
+            android:exported="false" />
+
+        <!-- 待决收入：逐笔判断收入性质与抵扣额 -->
+        <activity
+            android:name=".PendingIncomeActivity"
+            android:exported="false" />
 
         <!-- 常驻保活前台服务：提升进程优先级，保证监听器长期存活 -->
         <service
