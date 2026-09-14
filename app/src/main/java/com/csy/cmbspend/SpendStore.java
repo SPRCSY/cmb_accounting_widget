@@ -40,7 +40,9 @@ public final class SpendStore {
     private static final String KEY_LEDGER_INCOME = "ledger_incomes"; // 全部收入，只追加
     private static final String KEY_DUP_MONTH = "dup_month";       // 去重集合所属月份 yyyy-MM
     private static final String KEY_PROCESSED = "processed_keys";  // 当月已处理通知 id 集合
-    private static final String KEY_ADJUST_MONTH = "month_key";    // 调整值所属月份 yyyy-MM
+    // 已废弃（2026-09-14）：曾用「调整值」增量累加通知金额，与明细重复计数。
+    // 现在净额完全由台账推导，这两个键仅供一次性清理，不再读写。
+    private static final String KEY_ADJUST_MONTH = "month_key";
     private static final String KEY_ADJUST_CENTS = "month_adjust_cents";
 
     // 旧版本的键，仅用于一次性迁移，迁移后不再写入
@@ -312,13 +314,15 @@ public final class SpendStore {
     // 汇总
     // ------------------------------------------------------------------
 
-    /** 本月账目汇总。顶部大数与表格页脚都从这里取，保证两者永远一致。 */
+    /** 本月账目汇总。顶部大数与表格页脚都从这里取，保证两者永远一致。
+     *  净额 = Σ支出 − Σ退款 − Σ收入抵扣；**没有独立的「调整值」可漂移**。
+     *  （2026-09-14 移除 adjustCents：监听器曾对每笔通知额外累加一份，
+     *   而明细本身已含该笔，导致同一笔被算两次、顶部大数比明细多出一截。） */
     public static final class Summary {
         public long spendCents;
         public long refundCents;
         public long deductCents;
-        public long adjustCents;
-        public long netCents() { return spendCents - refundCents - deductCents + adjustCents; }
+        public long netCents() { return spendCents - refundCents - deductCents; }
     }
 
     public static Summary getSummary(Context ctx) {
@@ -328,27 +332,13 @@ public final class SpendStore {
             else if (it.isRefund()) s.refundCents += it.cents;
         }
         for (Income inc : getIncomes(ctx)) s.deductCents += inc.deductCents;
-        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (currentMonthKey().equals(p.getString(KEY_ADJUST_MONTH, ""))) {
-            s.adjustCents = p.getLong(KEY_ADJUST_CENTS, 0L);
-        }
         return s;
     }
 
-    /** 读取本月累计消费（分）。总额由台账推导，无计数器可漂移。 */
+    /** 读取本月累计消费（分）。总额完全由台账推导，无计数器可漂移。 */
     public static long getCurrentMonthCents(Context ctx) {
         long v = getSummary(ctx).netCents();
         return v < 0 ? 0 : v;
-    }
-
-    /** 人工调整本月总额（分，可正可负），仅供调试/人工校正。 */
-    public static long addCents(Context ctx, long cents) {
-        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        long base = currentMonthKey().equals(p.getString(KEY_ADJUST_MONTH, ""))
-                ? p.getLong(KEY_ADJUST_CENTS, 0L) : 0L;
-        p.edit().putString(KEY_ADJUST_MONTH, currentMonthKey())
-                .putLong(KEY_ADJUST_CENTS, base + cents).apply();
-        return getCurrentMonthCents(ctx);
     }
 
     // ------------------------------------------------------------------
@@ -383,10 +373,11 @@ public final class SpendStore {
     public static void resetForDebug(Context ctx) {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         p.edit().putString(KEY_LEDGER, "[]").putString(KEY_LEDGER_INCOME, "[]")
-                .putString(KEY_ADJUST_MONTH, currentMonthKey()).putLong(KEY_ADJUST_CENTS, 0L)
                 .putString(KEY_DUP_MONTH, currentMonthKey())
                 .putStringSet(KEY_PROCESSED, new HashSet<>())
                 .remove(KEY_OLD_ITEMS).remove(KEY_OLD_INCOMES)
+                // 旧版的「调整值」键：已废弃，顺手清掉，避免残留数据再被误读
+                .remove(KEY_ADJUST_MONTH).remove(KEY_ADJUST_CENTS)
                 .apply();
         backup(ctx, new JSONArray(), new JSONArray());
     }

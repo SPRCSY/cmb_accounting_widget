@@ -314,7 +314,7 @@ public class MainActivity extends Activity {
     private void showRulesDialog() {
         final java.util.Set<String> words = new java.util.LinkedHashSet<>(Rules.getExcludeWords(this));
         final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint("输入要排除的关键词，如：转账 / 还款 / 随用随充");
+        input.setHint("输入要排除的关键词，多个用顿号或换行分隔");
         input.setText(TextUtils.join("、", words));
 
         new android.app.AlertDialog.Builder(this)

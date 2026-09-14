@@ -59,13 +59,13 @@ public class CmbNotificationListener extends NotificationListenerService {
 
             String merchant = CmbNotificationParser.extractMerchant(text);
             if (CmbNotificationParser.Result.TYPE_SPEND.equals(r.type)) {
-                SpendStore.addCents(this, r.cents);
+                // 只写明细台账：本月净额由台账推导（Σ支出−Σ退款−Σ收入抵扣），
+                // 这里不再另记「调整值」，否则同一笔会被算两次。
                 // 取现没有商户名，用「现金取款」作为来源标签，便于对账时区分
                 String label = merchant.isEmpty() ? r.label() : merchant;
                 SpendStore.addItem(this, System.currentTimeMillis(), r.cents, label,
                         SpendStore.KIND_SPEND, text);
             } else if (CmbNotificationParser.Result.TYPE_REFUND.equals(r.type)) {
-                SpendStore.addCents(this, -r.cents);
                 SpendStore.addItem(this, System.currentTimeMillis(), r.cents, merchant,
                         SpendStore.KIND_REFUND, text);
             } else if (CmbNotificationParser.Result.TYPE_INCOME.equals(r.type)) {
