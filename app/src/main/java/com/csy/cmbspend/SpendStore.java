@@ -125,15 +125,19 @@ public final class SpendStore {
         public boolean isIncome() { return KIND_INCOME.equals(kind); }
     }
 
-    /** 全部明细（不限月份），时间从新到旧。 */
+    /** 全部明细（不限月份），**按时间从新到旧排序**。
+     *  注意：不能靠「倒着读数组」来充当排序——数组是只追加的，实时通知按到达顺序追加时
+     *  恰好等于时间序，但 `restoreFromJson` 追加旧日期条目、或通知乱序到达时就会打乱，
+     *  导致明细表顶部出现不该在那儿的旧账（2026-09-14 实测）。故一律显式按时间戳排序。 */
     public static List<Item> getAllItems(Context ctx) {
         JSONArray arr = readLedger(ctx);
         List<Item> out = new ArrayList<>();
-        for (int i = arr.length() - 1; i >= 0; i--) {
+        for (int i = 0; i < arr.length(); i++) {
             JSONObject o = arr.optJSONObject(i);
             if (o == null) continue;
             out.add(parseItem(o));
         }
+        out.sort((a, b) -> Long.compare(b.timeMs, a.timeMs));   // 时间倒序：最新在最上
         return out;
     }
 
@@ -238,17 +242,18 @@ public final class SpendStore {
         }
     }
 
-    /** 全部收入（不限月份），时间从新到旧。 */
+    /** 全部收入（不限月份），**按时间从新到旧排序**（理由同 `getAllItems`）。 */
     public static List<Income> getAllIncomes(Context ctx) {
         JSONArray arr = readIncomeLedger(ctx);
         List<Income> out = new ArrayList<>();
-        for (int i = arr.length() - 1; i >= 0; i--) {
+        for (int i = 0; i < arr.length(); i++) {
             JSONObject o = arr.optJSONObject(i);
             if (o == null) continue;
             out.add(new Income(o.optString("id", ""), o.optLong("t", 0), o.optLong("c", 0),
                     o.optString("m", ""), o.optString("r", ""),
                     o.optString("n", ""), o.optLong("x", 0)));
         }
+        out.sort((a, b) -> Long.compare(b.timeMs, a.timeMs));
         return out;
     }
 
